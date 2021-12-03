@@ -64,9 +64,9 @@ func getDurationDiff(t time.Time) time.Duration {
 }
 
 // Converts the duration into days
-func convertDurationToDays(t time.Duration) (float64, error)
+func convertDurationToDays(t time.Duration) (float64, error) {
 
-	c.Log.Debug().Msgf("Duration passed convertDurationToDays is - %v", t)
+	c.Log.Debug().Msgf("Duration passed to convertDurationToDays is - %v", t)
 	d, err := time.ParseDuration(t)
 	if err != nil {
 		c.Log.Error().Err(err).Msgf("Could not convert %s to a int64", splitTS)
@@ -115,9 +115,9 @@ func (c *Config) convertInt64ToUnixTime(i int64) (time.Time, error) {
 
 // Checks to see if the item string is located anywhere in the slice of strings
 func (c *Config) checkRegexes(item string, slice []string) bool {
-	for _, s := range slice {
+	for _, str := range slice {
 		// Generate the regex expression you want to check for
-		expression := fmt.Sprintf("(?i)%s", s)
+		expression := fmt.Sprintf("(?i)%s", str)
 		// Parse regex expression
 		regEx := regexp.MustCompile(expression)
 		// Check regex expression
@@ -125,7 +125,7 @@ func (c *Config) checkRegexes(item string, slice []string) bool {
 
 		// If there was an error checking regexes then exit
 		if err != nil {
-			c.Log.Debug().Msgf("There was an error checking %s for %s using regex %s - %s" s, item, expression, err)
+			c.Log.Debug().Msgf("There was an error checking %s for %s using regex %s - %s" str, item, expression, err)
 			os.Exit(0)
 		}
 	}
