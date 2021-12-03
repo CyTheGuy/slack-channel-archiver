@@ -1,0 +1,6 @@
+channels:
+    - specific-channel-name-to-skip1
+    - specific-channel-name-to-skip2
+blacklist:
+    - outage
+    - events
