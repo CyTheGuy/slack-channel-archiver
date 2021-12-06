@@ -1,8 +1,6 @@
 package main
 
-import (
-	"github.com/CyTheGuy/slack-channel-archiver/archiver"
-)
+import "github.com/CyTheGuy/slack-channel-archiver/archiver"
 
 func main() {
 

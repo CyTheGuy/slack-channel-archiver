@@ -17,7 +17,7 @@ func (c *Config) getConvos() ([]slack.Channel, error) {
 	convos, cursor, err := c.Slack.GetConversations(&slack.GetConversationsParameters{
 		Types:           []string{"public_channel"},
 		Limit:           1000,
-		ExcludeArchived: "true"})
+		ExcludeArchived: true})
 
 	if err != nil {
 		c.Log.Error().Msgf("Failed to get slack conversations - %s", err)
@@ -30,7 +30,7 @@ func (c *Config) getConvos() ([]slack.Channel, error) {
 			Types:           []string{"public_channel"},
 			Limit:           1000,
 			Cursor:          cursor,
-			ExcludeArchived: "true",
+			ExcludeArchived: true,
 		})
 
 		if err != nil {
@@ -91,7 +91,7 @@ func (c *Config) getConvoHistoryFiltered(channel slack.Channel) (slack.Message, 
 			return c.getConvoHistoryFiltered(channel)
 		}
 		c.Log.Error().Msgf("Could not get filtered channel history for %v - %s", channel.Name, err)
-		// Exit since if it returns an empty message struct it will assume this channel has no history and try to archive it
+		// Exit since if it returns an empty message struct it will assume this channel has no history and it will try to archive it
 		os.Exit(0)
 	}
 

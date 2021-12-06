@@ -4,7 +4,6 @@ import (
 	"os"
 )
 
-// Archiver - starts the archiving of inactive channels workflow
 func (c *Config) Archiver() {
 
 	// Get all public and unarchived channels
@@ -12,8 +11,9 @@ func (c *Config) Archiver() {
 	if err != nil {
 		os.Exit(0)
 	}
+	c.Log.Info().Msgf("A total of %v channels were pulled", len(allChannels))
 
-	// Initate counter for # of messaged and archived so you can know if they hit the targetLimit
+	// Initate counter for # of channels messaged and # of channels archived so you can know if the targetLimit is reached
 	messagedCount := 0
 	archivedCount := 0
 
@@ -25,37 +25,38 @@ func (c *Config) Archiver() {
 			return
 		}
 
-		// Make sure the channel is 60+ days old and that it does not meet the criteria in the exceptions list
+		// Make sure the channel is at least creationDaysLimit days old and that it does not meet the criteria in the exceptions list or blacklist
 		if !c.channelChecks(channel) {
 			continue
 		}
 
-		c.Log.Debug().Msgf("Targeting %s", channel.Name)
+		c.Log.Debug().Msgf("Targeting %s - %s", channel.Name, channel.ID)
 		// Get message history for the channel - filter out channel_leave/channel_join
-		lastestMessage, hasMessages := c.getConvoHistoryFiltered(channel)
+		latestMessage, hasMessages := c.getConvoHistoryFiltered(channel)
 
 		// If there is no latest message archive the channel
 		if !hasMessages {
-			c.Log.Info().Msgf("%s has no message history", channel.Name)
+			c.Log.Info().Msgf("%s - %s has no message history", channel.Name, channel.ID)
 			c.messageChannel(channel, nohistoryMessage)
 			c.archiveChannel(channel)
 			continue
 		}
 
-		// See when last activity occured in days
-		days, err := c.getLastMessageInDays(lastestMessage.Msg)
+		// See when last channel message occured in days
+		days, err := c.getLastMessageInDays(latestMessage.Msg)
 		if err != nil {
-			c.Log.Error().Msgf("Could not get diff in days for %s - %s", lastestMessage.Msg.Timestamp, err)
+			// If you could not convert lastMessage to days then log it, skip channel and continue
+			c.Log.Error().Err(err).Msgf("Could not convert lastMessage to days for %s - %s - %s", channel.Name, channel.ID, err)
 			continue
 		}
 
-		// If Over 30 Days and lastestMessage.Text == archive_message and username == "ArchiveBot"
-		if days > 30 && lastestMessage.Username == "ArchiveBot" && archivedCount <= targetLimit {
-			c.Log.Info().Msgf("%s has been inactive for over 30 days after archiveMessage was sent - %v", channel.Name, days)
+		// If Over archiveInactiveDaysLimit Days and latestMessage.Text == archive_message and username == botName
+		if days > archiveInactiveDaysLimit && latestMessage.Username == botName && archivedCount <= targetLimit {
+			c.Log.Info().Msgf("%s has been inactive for over %v days after archiveMessage was sent - %v", channel.Name, archiveInactiveDaysLimit, days)
 			c.archiveChannel(channel)
 			archivedCount++
-		} else if days > inactiveDaysLimit && messagedCount <= targetLimit {
-			c.Log.Info().Msgf("%s has been inactive for over %v days - %v", channel.Name, inactiveDaysLimit, days)
+		} else if days > messageInactiveDaysLimit && messagedCount <= targetLimit {
+			c.Log.Info().Msgf("%s has been inactive for over %v days - %v", channel.Name, messageInactiveDaysLimit, days)
 			c.messageChannel(channel, archiveMessage)
 			messagedCount++
 		}

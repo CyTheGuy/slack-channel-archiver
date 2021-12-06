@@ -1,7 +1,12 @@
 package archiver
 
 import (
+	"fmt"
+	"regexp"
+	"strconv"
+	"strings"
 	"time"
+
 	"github.com/slack-go/slack"
 )
 
@@ -11,8 +16,9 @@ import (
 
 func (c *Config) channelChecks(channel slack.Channel) bool {
 
-	// Check creation date and filter out channels created less than 60 days ago since they are too new to archive
-	if c.getCreationInDays(channel) < creationDaysLimit {
+	// Get channel creation date from now in days
+	creationDays := c.getCreationInDays(channel)
+	if creationDays < creationDaysLimit {
 		c.Log.Debug().Msgf("%s is too new of a channel - skipping it", channel.Name)
 		return false
 	}
@@ -28,34 +34,35 @@ func (c *Config) channelChecks(channel slack.Channel) bool {
 
 func (c *Config) getCreationInDays(channel slack.Channel) float64 {
 
-	duration := getDurationDiff(channel.Created.Time())
-	c.Log.Debug().Msgf("Created duration from now for %s is - %s", channel.Name, duration)
+	c.Log.Debug().Msgf("Channel created time for %s - %s is %v", channel.Name, channel.ID, channel.Created.Time())
+	durationFromNow := getDurationDiff(channel.Created.Time())
+	c.Log.Debug().Msgf("Channel %s - %s was created %s ago", channel.Name, channel.ID, durationFromNow)
 
-	createdDays := convertDurationToDays(duration)
-	c.Log.Debug().Msgf("Created duration converted to days is - %v", createdDays)
-
+	createdDays := convertDurationToDays(durationFromNow)
+	c.Log.Debug().Msgf("Duration from now - %v - converted to days is - %v", durationFromNow, createdDays)
 	return createdDays
 }
 
 func (c *Config) getLastMessageInDays(message slack.Msg) (float64, error) {
 
-	// Convert TS to UTC
+	// Convert the last message timestamp to UTC
+	c.Log.Debug().Msgf("Last message timestamp is - %v - attempting to convert it to UnixTime", message.Timestamp)
 	timeUnix, err := c.getUnixTime(message.Timestamp)
 	if err != nil {
 		return 0, err
 	}
 
-	duration := getDurationDiff(timeUnix)
-	c.Log.Debug().Msgf("Last message duration from now is - %s", duration)
+	durationFromNow := getDurationDiff(timeUnix)
+	c.Log.Debug().Msgf("Last message duration from now is - %s", durationFromNow)
 
-	messagedDays := convertDurationToDays(duration)
+	messagedDays := convertDurationToDays(durationFromNow)
 	c.Log.Debug().Msgf("Last message duration converted to days is - %v", messagedDays)
 
 	return messagedDays, nil
 }
 
-// 
-// Time 
+//
+// Time
 //
 
 // Gets the duration difference between a unixtime and now
@@ -63,50 +70,37 @@ func getDurationDiff(t time.Time) time.Duration {
 	return time.Now().Sub(t)
 }
 
-// Converts the duration into days
-func convertDurationToDays(t time.Duration) (float64, error) {
-
-	c.Log.Debug().Msgf("Duration passed to convertDurationToDays is - %v", t)
-	d, err := time.ParseDuration(t)
-	if err != nil {
-		c.Log.Error().Err(err).Msgf("Could not convert %s to a int64", splitTS)
-		return time.Time{}, err
-	}
-
-	days := d.Hours()/24
-	c.Log.Debug().Msgf("Duration converted to days is - %v", days)
-
-	return days, nil
+// Converts the duration from hours into days
+func convertDurationToDays(t time.Duration) float64 {
+	return t.Hours() / 24
 }
 
 func (c *Config) getUnixTime(ts string) (time.Time, error) {
 
 	// Split string
-	splitTS := strings.Split(ts, ".", 0)
+	split := strings.Split(ts, ".")
+	splitTS := split[0]
 	c.Log.Debug().Msgf("Split %s to %s", ts, splitTS)
 
 	// Convert string to int64
 	intTS, err := strconv.ParseInt(splitTS, 10, 64)
-	c.Log.Debug().Msgf("Converted string %s to int %v", splitTS, intTS)
-
 	if err != nil {
 		c.Log.Error().Err(err).Msgf("Could not convert %s to a int64", splitTS)
 		return time.Time{}, err
 	}
+	c.Log.Debug().Msgf("Converted string %s to int %v", split, intTS)
 
 	// Get Unix Time
-	timeUnix := convertInt64ToUnixTime(intTS)
-	c.Log.Debug().Msgf("Converted int %v to %v", intTS, timeUnix)
-
-	// Return
-	c.Log.Debug().Msgf("Unix Time is %s", timeUnix)
+	timeUnix := c.convertInt64ToUnixTime(intTS)
+	c.Log.Debug().Msgf("Converted int %v to UnixTime %v", intTS, timeUnix)
 	return timeUnix, nil
 }
 
-func (c *Config) convertInt64ToUnixTime(i int64) (time.Time, error) {
+func (c *Config) convertInt64ToUnixTime(i int64) time.Time {
 
-	unitTime = time.Unix(i, 0)
-	return 
+	timeUnix := time.Unix(i, 0)
+	c.Log.Debug().Msgf("Unix Time is %s", timeUnix)
+	return timeUnix
 }
 
 //
@@ -115,21 +109,21 @@ func (c *Config) convertInt64ToUnixTime(i int64) (time.Time, error) {
 
 // Checks to see if the item string is located anywhere in the slice of strings
 func (c *Config) checkRegexes(item string, slice []string) bool {
+
 	for _, str := range slice {
+
 		// Generate the regex expression you want to check for
 		expression := fmt.Sprintf("(?i)%s", str)
 		// Parse regex expression
 		regEx := regexp.MustCompile(expression)
 		// Check regex expression
-		matched, err := regEx.MatchString(item)
 
-		// If there was an error checking regexes then exit
-		if err != nil {
-			c.Log.Debug().Msgf("There was an error checking %s for %s using regex %s - %s" str, item, expression, err)
-			os.Exit(0)
+		if regEx.MatchString(item) {
+			c.Log.Debug().Msgf("%s was a regex match for %s", item, str)
+			return true
 		}
 	}
-	return matched
+	return false
 }
 
 //

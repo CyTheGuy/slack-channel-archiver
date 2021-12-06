@@ -4,8 +4,8 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/slack-go/slack"
 	"github.com/rs/zerolog"
+	"github.com/slack-go/slack"
 	"gopkg.in/yaml.v2"
 )
 
