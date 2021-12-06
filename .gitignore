@@ -1,4 +1,3 @@
 .DS_Store
-destinations.yml
-secrets/
+destination.yml
 README.md
